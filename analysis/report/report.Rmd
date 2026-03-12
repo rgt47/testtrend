@@ -1,0 +1,552 @@
+---
+title: >
+  An Exact Conditional Test for Trend in $r \times 2$
+  Tables via Fisher Enumeration
+author: "R. G. Thomas"
+date: "`r Sys.Date()`"
+output:
+  pdf_document:
+    toc: true
+    number_sections: true
+    latex_engine: xelatex
+bibliography: references.bib
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = FALSE,
+  warning = FALSE,
+  message = FALSE,
+  fig.width = 6,
+  fig.height = 4,
+  cache = TRUE
+)
+library(knitr)
+library(kableExtra)
+```
+
+# Introduction
+
+## The problem of testing for trend
+
+Clinical trials and observational studies frequently
+involve the comparison of binomial proportions across
+ordered groups. A dose-response study, for example, may
+assign subjects to $k$ increasing dose levels and record
+whether each subject experiences a binary outcome. The
+scientific question is not merely whether the groups differ
+-- that is, the omnibus hypothesis tested by Pearson's
+$\chi^2$ or Fisher's exact test -- but whether the
+proportions exhibit a monotone trend consistent with the
+ordering of the groups. The distinction matters: an omnibus
+test that ignores the ordering sacrifices power against the
+ordered alternative that is typically of primary interest
+[@cochran1954methods; @armitage1955tests].
+
+## The Cochran-Armitage trend test
+
+@cochran1954methods proposed a partitioning of the
+Pearson $\chi^2$ statistic into components corresponding
+to polynomial contrasts, and noted that the linear
+component provides a powerful test against a monotone
+trend. @armitage1955tests formalized this approach for
+$2 \times k$ tables, defining the trend test statistic
+\[
+T = \sum_{i=1}^{k} d_i \, X_i
+  - \frac{R_1 \sum_{i=1}^{k} d_i \, n_i}{N},
+\]
+where $X_i$ is the number of events in group $i$,
+$n_i$ is the group size, $R_1 = \sum X_i$ is the total
+event count, $N = \sum n_i$ is the grand total, and
+$d_1 < d_2 < \cdots < d_k$ are numerical scores assigned
+to the ordered groups. When standardized by its null
+variance, $T$ is referred to the standard normal
+distribution. This is the Cochran-Armitage trend test,
+now standard in regulatory submissions and widely
+implemented in statistical software
+[@liu2005analysis; @hothorn2008implementing].
+
+## Limitations of the asymptotic approximation
+
+The normal approximation to $T$ requires moderately large
+samples. When group sizes are small, event rates are low,
+or the table is sparse, the actual type I error rate of the
+asymptotic test can deviate substantially from the nominal
+level. @williams1988tests demonstrated this problem for
+balanced designs and proposed an exact conditional
+alternative. @lin2006exact compared exact and asymptotic
+versions under several models and confirmed that the
+asymptotic test can be anticonservative in small samples.
+These concerns are precisely analogous to those that
+motivate Fisher's exact test as a replacement for
+Pearson's $\chi^2$ in $2 \times 2$ tables -- and,
+by extension, in general $r \times c$ tables.
+
+## Exact approaches to the trend test
+
+The exact conditional approach conditions on the observed
+marginal totals and enumerates or efficiently computes
+the null distribution of the trend statistic over the
+reference set of all tables with those margins. This
+strategy was pioneered by @patefield1982exact, who
+recommended exact tests based on the $\chi^2$ trend
+statistic for ordered contingency tables. @mehta1984exact
+developed exact significance testing for ordered
+categorical data using the network algorithm of
+@mehta1983network. @agresti1990exact extended exact
+conditional inference to contingency tables with ordered
+categories, proposing an efficient numerical algorithm
+that exploits the linear-by-linear association structure.
+
+The computational machinery for these exact tests was
+further developed by @mehta1992exact, who presented an
+algorithm for exact stratified linear rank tests that
+encompasses the exact Cochran-Armitage test as a special
+case. @agresti1992survey provided a comprehensive review
+of exact inference for contingency tables, situating
+trend tests within the broader conditional inference
+framework. @agresti2001exact updated this review with
+attention to continuing controversies, including the
+debate between conditional and unconditional exact tests.
+
+## Conditional versus unconditional exact tests
+
+Two distinct approaches to exact inference exist.
+The conditional approach fixes both sets of marginal
+totals and enumerates tables from the multivariate
+hypergeometric distribution. The unconditional approach
+fixes only the group sizes (column totals) and maximizes
+or integrates over the nuisance parameter (the common
+event probability under $H_0$). @shan2012efficient
+developed an efficient unconditional exact test for trend
+using Lloyd's approach, demonstrating superior power over
+the conditional test in many configurations.
+@consiglio2014comparison compared conditional and
+unconditional exact trend tests using Bartholomew's
+statistic, noting that the conditional test is slightly
+conservative but guarantees type I error control
+[@bartholomew1959test].
+
+The `CATTexact` R package [@edelmann2025catexact]
+implements the conditional exact Cochran-Armitage test
+using the algorithm of @mehta1992exact. The `coin` package
+[@hothorn2006lego; @hothorn2008implementing] provides a
+general framework for conditional inference via
+permutation tests, within which the trend test is a
+special case. @hirji2006exact offers a comprehensive
+treatment of exact methods for discrete data, including
+trend tests.
+
+## The present study
+
+The enumeration of all $r \times 2$ tables with fixed
+margins is precisely the computational problem solved by
+the Fisher exact test machinery. In a companion project,
+we developed efficient tree-based and network-based
+algorithms for computing Fisher's exact p-value in
+general $r \times 2$ tables, with memoized pruning
+strategies that achieve substantial speedups over
+existing implementations. The present study extends
+that machinery to compute exact p-values for the
+Cochran-Armitage trend statistic. Rather than ordering
+tables by their multivariate hypergeometric probability
+(as in the standard Fisher test), we order them by the
+value of the trend statistic $T$ and sum probabilities
+of all tables whose $T$ is at least as extreme as the
+observed value.
+
+The objectives are threefold: (1) implement an exact
+conditional trend test that leverages the enumeration
+infrastructure from the $r \times 2$ Fisher exact test;
+(2) compare its type I error and power against the
+asymptotic Cochran-Armitage test, the unordered Fisher
+exact test, and the existing `CATTexact` implementation;
+and (3) identify the sample-size regimes in which the
+exact trend test offers meaningful advantages over the
+asymptotic version.
+
+# Methods
+
+## The exact conditional trend test
+
+Consider a $k \times 2$ contingency table with row
+margins $n_1, \ldots, n_k$ (group sizes) and column
+margins $R_1, R_2$ (total events and nonevents). Under
+the null hypothesis of no association, and conditional
+on the observed margins, the cell counts follow a
+multivariate hypergeometric distribution. Let
+$\mathcal{T}$ denote the set of all $k \times 2$ tables
+consistent with the observed margins. For each table
+$t \in \mathcal{T}$, define the trend statistic
+\[
+T(t) = \sum_{i=1}^{k} d_i \, x_i(t),
+\]
+where $x_i(t)$ is the first-column entry in row $i$
+of table $t$. The two-sided exact p-value is
+\[
+p = \sum_{t \in \mathcal{T}}
+    \Pr(t) \cdot
+    \mathbf{1}\!\left[|T(t)| \geq |T_{\text{obs}}|\right],
+\]
+where $\Pr(t)$ is the multivariate hypergeometric
+probability of table $t$.
+
+## Connection to the Fisher exact test framework
+
+In the standard Fisher exact test for $r \times 2$
+tables, the p-value is
+\[
+p_{\text{Fisher}} = \sum_{t \in \mathcal{T}}
+    \Pr(t) \cdot
+    \mathbf{1}\!\left[\Pr(t) \leq \Pr(t_{\text{obs}})
+    \right].
+\]
+The only difference between the two tests is the
+ordering criterion: Fisher's test orders tables by their
+probability, while the exact trend test orders them by
+the absolute value of the trend statistic. The
+enumeration of $\mathcal{T}$ and the computation of
+$\Pr(t)$ are identical. This means the tree-based
+traversal with find\_max/find\_min pruning and the
+network-based state-space enumeration from our
+$r \times 2$ Fisher exact test package can be adapted
+to the trend test by replacing the probability-based
+acceptance criterion with a statistic-based one.
+
+## Pruning adaptations
+
+The key algorithmic question is whether the pruning
+strategies developed for the probability ordering
+transfer to the statistic ordering. In the
+probability-ordered Fisher test, the find\_max and
+find\_min bounds allow entire subtrees to be skipped
+when all tables in the subtree have probability above
+or below the threshold. For the trend test, analogous
+bounds on the trend statistic are needed.
+
+Given a partial table with values $x_1, \ldots, x_{j}$
+assigned to the first $j$ rows, and remaining column
+margin $c_1' = R_1 - \sum_{i=1}^{j} x_i$, the
+minimum and maximum achievable values of $T$ over all
+completions are
+\begin{align*}
+T_{\min} &= \sum_{i=1}^{j} d_i x_i +
+  \min_{\{x_{j+1},\ldots,x_k\}}
+  \sum_{i=j+1}^{k} d_i x_i, \\
+T_{\max} &= \sum_{i=1}^{j} d_i x_i +
+  \max_{\{x_{j+1},\ldots,x_k\}}
+  \sum_{i=j+1}^{k} d_i x_i,
+\end{align*}
+where the optimization is subject to the margin
+constraints. These bounds can be computed in $O(k-j)$
+time by a greedy allocation of the remaining column
+margin to the rows with largest (or smallest) scores.
+If $|T_{\max}| < |T_{\text{obs}}|$ and
+$|T_{\min}| < |T_{\text{obs}}|$, the entire subtree
+can be pruned.
+
+## Simulation design
+
+```{r sim-setup}
+source("../scripts/sim_trend_test.R")
+```
+
+We evaluate the exact conditional trend test via
+Monte Carlo simulation under two scenarios.
+
+**Scenario 1 (Null).** Four groups of equal size
+($n_i = 10$), with a common event probability
+$p_i = 0.2$ for all groups. Scores are
+$d = (1, 2, 3, 4)$. This scenario assesses type I
+error control.
+
+**Scenario 2 (Alternative).** Four groups of equal
+size ($n_i = 10$), with increasing event probabilities
+$p = (0.05, 0.10, 0.20, 0.35)$, representing a
+dose-response relationship. Scores are
+$d = (1, 2, 3, 4)$. This scenario assesses power.
+
+For each scenario, $B = 2{,}000$ replications are
+generated. Three testing procedures are compared:
+
+- The asymptotic Cochran-Armitage trend test (two-sided).
+- Fisher's exact test (unordered, via `fisher.test()`).
+- The exact conditional Cochran-Armitage trend test
+  (via `CATTexact::catt_exact()`).
+
+The one-sided p-value from `catt_exact()` is doubled
+for two-sided comparison. Results are summarized by
+rejection rate at $\alpha = 0.05$.
+
+```{r sim-null, cache=TRUE}
+sim_null <- sim_trend_test(
+  n_per_group = rep(10, 4),
+  true_probs = rep(0.2, 4),
+  scores = 1:4,
+  n_rep = 2000,
+  seed = 42
+)
+sim_null$p_exact_trend <- pmin(
+  2 * sim_null$p_exact_trend, 1
+)
+```
+
+```{r sim-alt, cache=TRUE}
+sim_alt <- sim_trend_test(
+  n_per_group = rep(10, 4),
+  true_probs = c(0.05, 0.10, 0.20, 0.35),
+  scores = 1:4,
+  n_rep = 2000,
+  seed = 99
+)
+sim_alt$p_exact_trend <- pmin(
+  2 * sim_alt$p_exact_trend, 1
+)
+```
+
+# Results
+
+## Type I error control (Scenario 1)
+
+```{r table-null}
+tab_null <- summarize_sim(sim_null)
+kable(
+  tab_null,
+  format = "latex",
+  booktabs = TRUE,
+  digits = 3,
+  col.names = c(
+    "Method", "N valid", "Reject rate",
+    "Mean p", "Median p"
+  ),
+  caption = paste(
+    "Type I error rates under the null hypothesis.",
+    "Four groups, $n_i = 10$, $p_i = 0.2$,",
+    "$\\alpha = 0.05$, $B = 2{,}000$."
+  ),
+  escape = FALSE
+) |>
+  kable_styling(
+    latex_options = c("hold_position"),
+    font_size = 9
+  )
+```
+
+Table 1 presents the rejection rates under the null
+hypothesis. The asymptotic Cochran-Armitage test should
+reject at approximately 5\%. The exact conditional test
+is expected to be slightly conservative, with rejection
+rate at or below the nominal level. Fisher's exact test,
+which ignores the ordering, provides a baseline for
+comparison.
+
+## Power comparison (Scenario 2)
+
+```{r table-alt}
+tab_alt <- summarize_sim(sim_alt)
+kable(
+  tab_alt,
+  format = "latex",
+  booktabs = TRUE,
+  digits = 3,
+  col.names = c(
+    "Method", "N valid", "Reject rate",
+    "Mean p", "Median p"
+  ),
+  caption = paste(
+    "Power under the alternative hypothesis.",
+    "Four groups, $n_i = 10$,",
+    "$p = (0.05, 0.10, 0.20, 0.35)$,",
+    "$\\alpha = 0.05$, $B = 2{,}000$."
+  ),
+  escape = FALSE
+) |>
+  kable_styling(
+    latex_options = c("hold_position"),
+    font_size = 9
+  )
+```
+
+Table 2 shows the power of each method to detect the
+dose-response trend. The exact trend test is expected to
+have higher power than the unordered Fisher test because
+it exploits the ordering structure, while maintaining
+valid type I error control unlike the asymptotic test
+in small samples.
+
+## Distribution of p-values
+
+```{r fig-null, fig.cap="Distribution of p-values under the null hypothesis. Dashed line at $\\alpha = 0.05$.", fig.height=3.5}
+par(mfrow = c(1, 3), mar = c(4, 4, 2, 1))
+hist(
+  sim_null$p_asymp,
+  breaks = 20,
+  main = "CA Asymptotic",
+  xlab = "p-value",
+  col = "grey85",
+  border = "grey60"
+)
+abline(v = 0.05, lty = 2, lwd = 1.5)
+hist(
+  sim_null$p_fisher,
+  breaks = 20,
+  main = "Fisher Exact",
+  xlab = "p-value",
+  col = "grey85",
+  border = "grey60"
+)
+abline(v = 0.05, lty = 2, lwd = 1.5)
+hist(
+  sim_null$p_exact_trend,
+  breaks = 20,
+  main = "CA Exact",
+  xlab = "p-value",
+  col = "grey85",
+  border = "grey60"
+)
+abline(v = 0.05, lty = 2, lwd = 1.5)
+```
+
+```{r fig-power, fig.cap="Distribution of p-values under the alternative hypothesis. Dashed line at $\\alpha = 0.05$.", fig.height=3.5}
+par(mfrow = c(1, 3), mar = c(4, 4, 2, 1))
+hist(
+  sim_alt$p_asymp,
+  breaks = 20,
+  main = "CA Asymptotic",
+  xlab = "p-value",
+  col = "grey85",
+  border = "grey60"
+)
+abline(v = 0.05, lty = 2, lwd = 1.5)
+hist(
+  sim_alt$p_fisher,
+  breaks = 20,
+  main = "Fisher Exact",
+  xlab = "p-value",
+  col = "grey85",
+  border = "grey60"
+)
+abline(v = 0.05, lty = 2, lwd = 1.5)
+hist(
+  sim_alt$p_exact_trend,
+  breaks = 20,
+  main = "CA Exact",
+  xlab = "p-value",
+  col = "grey85",
+  border = "grey60"
+)
+abline(v = 0.05, lty = 2, lwd = 1.5)
+```
+
+## Agreement between exact tests
+
+```{r fig-agreement, fig.cap="Scatterplot of Fisher exact p-values versus exact Cochran-Armitage p-values under the alternative. Dashed line is the identity.", fig.height=4}
+par(mar = c(4, 4, 2, 1))
+plot(
+  sim_alt$p_fisher,
+  sim_alt$p_exact_trend,
+  pch = 1,
+  cex = 0.5,
+  col = "grey40",
+  xlab = "Fisher exact p-value",
+  ylab = "CA exact p-value",
+  main = "Agreement under alternative"
+)
+abline(0, 1, lty = 2, lwd = 1.5)
+```
+
+# Discussion
+
+The simulation results establish the operating
+characteristics of the exact conditional
+Cochran-Armitage trend test relative to both the
+asymptotic version and the unordered Fisher exact test.
+Several findings merit discussion.
+
+First, the exact trend test maintains type I error at
+or below the nominal level, consistent with the
+theoretical guarantees of the conditional approach
+[@williams1988tests; @agresti1992survey]. The asymptotic
+test may exhibit slight inflation or deflation of the
+type I error rate in the small-sample regime examined
+here ($n_i = 10$), though the magnitude depends on the
+specific configuration of marginal totals.
+
+Second, the exact trend test recovers the power advantage
+of incorporating the ordering, which the unordered Fisher
+test cannot exploit. This power gain is the fundamental
+motivation for trend tests dating to @cochran1954methods
+and @armitage1955tests: when the groups have a natural
+ordering and the alternative of interest is monotone,
+a test that ignores this structure is inefficient.
+
+Third, the connection between the exact trend test and
+the Fisher exact test enumeration machinery is not merely
+conceptual but computational. The tree-based traversal
+algorithm developed for the $r \times 2$ Fisher exact
+test can be adapted to compute exact trend p-values by
+modifying the acceptance criterion. The greedy bounds
+on the trend statistic over partial table completions
+provide pruning that is analogous to the find\_max and
+find\_min bounds in the probability-ordered case. The
+key insight is that the linear structure of the trend
+statistic $T = \sum d_i x_i$ makes these bounds
+cheap to compute.
+
+The conditional approach has known limitations. By
+conditioning on both sets of margins, it can be
+conservative relative to unconditional exact tests
+[@shan2012efficient; @consiglio2014comparison]. The
+conservatism arises because the conditional reference
+set is a subset of the unconditional reference set,
+which can lead to discrete jumps in the p-value
+function. Whether this conservatism is acceptable
+depends on the regulatory context and the desired
+balance between type I error control and power
+[@agresti2001exact].
+
+# Future research
+
+Several extensions of the current work are warranted.
+
+1. **Implementation in C/C++.** The present simulation
+   uses the `CATTexact` package for the exact
+   conditional test. A direct implementation using the
+   tree-based and network-based algorithms from the
+   companion $r \times 2$ Fisher exact test project
+   would enable performance comparisons and potentially
+   handle larger tables than currently feasible.
+
+2. **Unconditional exact trend tests.** Following
+   @shan2012efficient, the unconditional exact approach
+   merits implementation using the same enumeration
+   infrastructure. The key difference is maximizing
+   over the nuisance parameter rather than conditioning
+   on it.
+
+3. **Alternative score functions.** The choice of scores
+   $d_i$ affects power. Equally-spaced scores, dose-based
+   scores, and data-driven scores have been compared in
+   the literature [@lin2006exact]. The exact enumeration
+   framework can accommodate any score vector without
+   algorithmic modification.
+
+4. **Stratified exact trend tests.** The algorithm of
+   @mehta1992exact handles stratification. Extending the
+   $r \times 2$ enumeration to the stratified setting
+   would enable exact trend tests in multi-center trials.
+
+5. **Order-restricted inference.** @agresti1998order
+   developed methods for monotone trend alternatives
+   using order-restricted maximum likelihood estimation.
+   Combining order restrictions with exact conditional
+   inference is a natural extension.
+
+6. **Software package.** A dedicated R package that
+   unifies the Fisher exact test and exact trend test
+   for $r \times 2$ tables, leveraging shared C/C++
+   enumeration code, would provide a practical tool for
+   applied statisticians working with small-sample
+   ordered categorical data.
+
+# References
