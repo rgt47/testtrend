@@ -127,15 +127,65 @@ statistic, noting that the conditional test is slightly
 conservative but guarantees type I error control
 [@bartholomew1959test].
 
-The `CATTexact` R package [@edelmann2025catexact]
+## Current standard implementations
+
+The dominant computational approach to the exact
+conditional trend test is the network algorithm of
+@mehta1992exact, which reformulates the enumeration
+of tables with fixed margins as a longest-path problem
+in a directed acyclic network. This algorithm underlies
+the commercial software StatXact [@mehta1983network]
+and has been adopted as the standard backend for exact
+trend testing in SAS PROC FREQ and SPSS Exact Tests.
+
+In R, three packages provide exact or near-exact trend
+tests. The `CATTexact` package [@edelmann2025catexact]
 implements the conditional exact Cochran-Armitage test
-using the algorithm of @mehta1992exact. The `coin` package
-[@hothorn2006lego; @hothorn2008implementing] provides a
-general framework for conditional inference via
-permutation tests, within which the trend test is a
-special case. @hirji2006exact offers a comprehensive
-treatment of exact methods for discrete data, including
-trend tests.
+using the @mehta1992exact algorithm, computing the
+one-sided exact p-value via network enumeration. The
+`coin` package [@hothorn2006lego; @hothorn2008implementing]
+provides a general permutation test framework based on
+the theory of @mehta1992exact and Strasser-Weber (1999);
+the trend test is obtained as a special case of
+`independence_test()` with ordered factors, using either
+exact enumeration, Monte Carlo approximation, or
+asymptotic distribution. The `perm` package offers
+exact permutation trend tests via both network and
+complete enumeration algorithms, though the latter is
+limited to small total sample sizes.
+
+Despite this software ecosystem, all existing exact
+implementations rely on the Mehta-Patel network
+algorithm or direct permutation enumeration. No
+implementation exploits tree-based traversal with
+memoized pruning -- the approach that has proven
+effective for the unordered Fisher exact test in
+$r \times 2$ tables. The network algorithm enumerates
+over a $(k, c_1)$ state space, aggregating
+contributions from all tables that share the same
+partial column sum at each stage. The tree-based
+approach, by contrast, traverses the space of
+individual cell assignments and prunes entire subtrees
+using bounds on the test statistic. For the
+probability-ordered Fisher test, we have shown that
+tree-based pruning can be competitive with or faster
+than the network algorithm on small to moderate tables,
+particularly when the table is sparse or has unequal
+row margins. Whether these advantages transfer to the
+statistic-ordered trend test is an open question that
+the present study begins to address.
+
+The unconditional exact approach, which fixes only
+group sizes and maximizes over the nuisance parameter,
+has been developed by @shan2012efficient and
+@consiglio2014comparison but remains less widely
+adopted. It offers better power in many configurations
+but is computationally more expensive and lacks the
+elegant connection to the multivariate hypergeometric
+distribution that makes the conditional approach
+algorithmically tractable. @hirji2006exact provides a
+comprehensive treatment of both conditional and
+unconditional exact methods for discrete data.
 
 ## The present study
 
