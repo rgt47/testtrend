@@ -2,7 +2,7 @@
 title: >
   An Exact Conditional Test for Trend in $r \times 2$
   Tables via Fisher Enumeration
-author: "R. G. Thomas"
+author: "Ronald G. Thomas, Ph.D."
 date: "`r Sys.Date()`"
 output:
   pdf_document:
