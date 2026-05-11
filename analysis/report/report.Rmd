@@ -2,7 +2,7 @@
 title: >
   An Exact Conditional Test for Trend in $r \times 2$
   Tables via Fisher Enumeration
-author: "Ronald G. Thomas, Ph.D."
+author: "Ronald G. Thomas, Ph.D.\\thanks{Wertheim School of Public Health, UCSD; ORCID: 0000-0003-1686-4965}"
 date: "`r Sys.Date()`"
 output:
   pdf_document:
@@ -631,3 +631,14 @@ audit is at `docs/morris-audit-2026-04-17.md`.
 
 A remediation plan is documented in the audit file and will be
 executed in a subsequent revision.
+
+
+```{r footer, echo=FALSE, results='asis'}
+src <- sub("^/Users/zenn/Dropbox/prj/", "~/prj/",
+           knitr::current_input(dir = TRUE))
+cat(sprintf(
+  "\n\\vfill\n\n---\n\n*Rendered on %s.*  \n*Source: `%s`*\n",
+  format(Sys.time(), "%Y-%m-%d at %H:%M %Z"),
+  src
+))
+```
