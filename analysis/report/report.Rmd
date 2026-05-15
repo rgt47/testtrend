@@ -6,11 +6,21 @@ author: "Ronald G. Thomas, Ph.D.\\thanks{Wertheim School of Public Health, UCSD;
 date: "`r Sys.Date()`"
 output:
   pdf_document:
+    latex_engine: xelatex
     toc: true
     number_sections: true
-    latex_engine: xelatex
+    keep_tex: true
+    highlight: tango
+fontsize: 11pt
+geometry: "left=3cm,right=5cm,top=2cm,bottom=2cm"
 bibliography: references.bib
 csl: statistics-in-medicine.csl
+link-citations: true
+header-includes:
+  - \usepackage{amsmath}
+  - \usepackage{amssymb}
+  - \usepackage{lineno}
+  - \linenumbers
 ---
 
 ```{r setup, include=FALSE}
