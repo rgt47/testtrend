@@ -1,5 +1,6 @@
 # syntax=docker/dockerfile:1.4
 # zzcollab Dockerfile v2.4.0
+# Profile: analysis
 
 ARG BASE_IMAGE=rocker/tidyverse
 ARG R_VERSION=4.5.3
