@@ -534,11 +534,11 @@ abline(0, 1, lty = 2, lwd = 1.5)
 
 # Discussion
 
-The simulation results establish the operating
-characteristics of the exact conditional
-Cochran-Armitage trend test relative to both the
-asymptotic version and the unordered Fisher exact test.
-Several findings merit discussion.
+We find that the simulation results establish the operating
+characteristics of the exact conditional Cochran-Armitage
+trend test relative to both the asymptotic version and
+the unordered Fisher exact test. Several findings merit
+discussion.
 
 First, the exact trend test maintains type I error at
 or below the nominal level, consistent with the
@@ -630,7 +630,7 @@ Several extensions of the current work are warranted.
 
 ## Morris et al. (2019) ADEMP Compliance
 
-This simulation study was audited against the reporting standards
+We audited this simulation study against the reporting standards
 proposed by Morris, White, and Crowther [-@morris2019using]. The full
 audit is at `docs/morris-audit-2026-04-17.md`.
 
@@ -642,8 +642,8 @@ audit is at `docs/morris-audit-2026-04-17.md`.
 - Two separate scenario seeds (42 for null, 99 for alternative) prevent cross-scenario paired comparison.
 - `summarize_sim()` returns rejection rate with no Monte Carlo SE.
 
-A remediation plan is documented in the audit file and will be
-executed in a subsequent revision.
+A remediation plan is recorded in the audit file and will be
+taken up in a subsequent revision.
 
 
 ```{r footer, echo=FALSE, results='asis'}
