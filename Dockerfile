@@ -3,7 +3,7 @@
 # Profile: analysis
 
 ARG BASE_IMAGE=rocker/tidyverse
-ARG R_VERSION=4.5.3
+ARG R_VERSION=4.6.0
 ARG USERNAME=analyst
 
 FROM ${BASE_IMAGE}:${R_VERSION}
