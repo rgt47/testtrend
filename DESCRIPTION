@@ -13,5 +13,4 @@ Suggests:
     knitr,
     rmarkdown,
     rprojroot,
-    testthat (>= 3.0.0),
     tinytest
