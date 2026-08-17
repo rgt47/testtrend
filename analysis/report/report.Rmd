@@ -1,7 +1,8 @@
 ---
 title: >
-  An Exact Conditional Test for Trend in $r \times 2$
-  Tables via Fisher Enumeration
+  Type I Error and Power of Exact and Asymptotic Trend
+  Tests in Small Ordered $r \times 2$ Tables: A
+  Simulation Study
 author: "Ronald G. Thomas, Ph.D.\\thanks{Wertheim School of Public Health, UCSD; ORCID: 0000-0003-1686-4965}"
 date: '`r format(Sys.Date(), "%B %d, %Y")`'
 output:
@@ -41,6 +42,33 @@ knitr::opts_chunk$set(
 library(knitr)
 library(kableExtra)
 ```
+
+# Abstract {-}
+
+Trend tests for ordered $r \times 2$ tables are usually
+applied either as a large-sample Cochran-Armitage
+statistic or as one of several existing exact conditional
+implementations; in small, sparse samples the choice
+between them is often left unexamined. We report a small
+ADEMP-structured Monte Carlo comparison of three trend
+procedures -- the asymptotic Cochran-Armitage test, the
+unordered Fisher exact test, and the exact conditional
+Cochran-Armitage test implemented in the `CATTexact`
+package -- under a null and a dose-response alternative
+with $k = 4$ groups of size 10 ($B = 2{,}000$
+replications per scenario). We find that the realized
+type I error rates of the three tests differ
+substantially at nominal $\alpha = 0.05$, and we identify
+the doubled one-sided `CATTexact` p-value used for the
+two-sided exact test as a conservative operational choice
+that plausibly explains part of this spread; we discuss
+its effect on the power comparison and report the
+observed rejection rates directly rather than only their
+expected direction. We do not implement or benchmark the
+tree-based pruning algorithm sketched in Section
+\@ref(pruning-adaptations) as a proposed extension; the
+contribution of this report is the simulation comparison
+itself, not new enumeration software.
 
 # Introduction
 
@@ -148,12 +176,14 @@ conservative but guarantees type I error control
 
 The dominant computational approach to the exact
 conditional trend test is the network algorithm of
-@mehta1992exact, which reformulates the enumeration
-of tables with fixed margins as a longest-path problem
-in a directed acyclic network. This algorithm underlies
-the commercial software StatXact [@mehta1983network]
-and has been adopted as the standard backend for exact
-trend testing in SAS PROC FREQ and SPSS Exact Tests.
+@mehta1980network and @mehta1992exact, which reformulates
+the enumeration of tables with fixed margins as a
+longest-path problem in a directed acyclic network. This
+algorithm underlies the commercial software StatXact
+[@mehta1983network] and is understood to underlie exact
+trend testing in SAS PROC FREQ and SPSS Exact Tests,
+though we have not verified this against the SAS/SPSS
+documentation directly.
 
 In R, three packages provide exact or near-exact trend
 tests. The `CATTexact` package [@edelmann2025catexact]
@@ -162,7 +192,8 @@ using the @mehta1992exact algorithm, computing the
 one-sided exact p-value via network enumeration. The
 `coin` package [@hothorn2006lego; @hothorn2008implementing]
 provides a general permutation test framework based on
-the theory of @mehta1992exact and Strasser-Weber (1999);
+the theory of @mehta1992exact and
+@strasser1999asymptotic;
 the trend test is obtained as a special case of
 `independence_test()` with ordered factors, using either
 exact enumeration, Monte Carlo approximation, or
@@ -213,24 +244,31 @@ we developed efficient tree-based and network-based
 algorithms for computing Fisher's exact p-value in
 general $r \times 2$ tables, with memoized pruning
 strategies that achieve substantial speedups over
-existing implementations. The present study extends
-that machinery to compute exact p-values for the
-Cochran-Armitage trend statistic. Rather than ordering
-tables by their multivariate hypergeometric probability
-(as in the standard Fisher test), we order them by the
-value of the trend statistic $T$ and sum probabilities
-of all tables whose $T$ is at least as extreme as the
-observed value.
+existing implementations. That the same enumeration
+machinery could, in principle, be adapted to the
+Cochran-Armitage trend statistic by replacing the
+probability-based acceptance criterion with a
+statistic-based one is a natural conjecture, and Section
+\@ref(pruning-adaptations) sketches the pruning bounds
+such an adaptation would require. We have not implemented
+or benchmarked this adaptation in the present work; it is
+recorded as a proposed extension (Section
+\@ref(future-research), item 1), not a completed
+contribution.
 
-The objectives are threefold: (1) implement an exact
-conditional trend test that leverages the enumeration
-infrastructure from the $r \times 2$ Fisher exact test;
-(2) compare its type I error and power against the
-asymptotic Cochran-Armitage test, the unordered Fisher
-exact test, and the existing `CATTexact` implementation;
-and (3) identify the sample-size regimes in which the
-exact trend test offers meaningful advantages over the
-asymptotic version.
+What we report here instead is a small, ADEMP-structured
+Monte Carlo comparison of the trend tests already
+available for small, sparse ordered tables. The
+objectives are twofold: (1) compare the type I error and
+power of the asymptotic Cochran-Armitage test, the
+unordered Fisher exact test, and the exact conditional
+Cochran-Armitage test as implemented in the existing
+`CATTexact` package, under a null and a dose-response
+alternative; and (2) report these operating
+characteristics honestly, including an unresolved
+discrepancy between the exact test's realized size and
+that of the unordered Fisher test that we discuss but do
+not fully explain (Section \@ref(discussion)).
 
 # Methods
 
@@ -258,7 +296,52 @@ p = \sum_{t \in \mathcal{T}}
 where $\Pr(t)$ is the multivariate hypergeometric
 probability of table $t$.
 
-## Connection to the Fisher exact test framework
+**Operational two-sided p-value used in this study.** The
+sum-based definition above is not implemented by the
+`CATTexact` package used for the simulation in Section
+\@ref(simulation-design): `CATTexact::catt_exact()`
+returns only a one-sided exact p-value computed via the
+Mehta-Patel network algorithm
+[@mehta1992exact; @edelmann2025catexact]. The two-sided
+p-values reported in this study are instead obtained by
+doubling that one-sided p-value,
+$p_{\text{two-sided}} = \min(2 p_{\text{one-sided}}, 1)$.
+This is a standard heuristic for constructing a two-sided
+p-value from a one-sided exact test when the null
+distribution of the test statistic is not guaranteed to
+be symmetric [@agresti1992survey], but it is a distinct
+construction from the sum-based definition above: for a
+discrete, generally asymmetric null distribution of $T$,
+doubling is known to be conservative and can overstate
+the two-sided p-value relative to the mass-based
+definition. We did not implement the mass-based two-sided
+p-value directly (doing so would require our own
+enumeration of $\mathcal{T}$, which is the unimplemented
+extension discussed in Section
+\@ref(connection-to-the-fisher-exact-test-framework-proposed)),
+so the doubling rule should be understood as the
+operational definition of "two-sided exact trend p-value"
+throughout the Results and Discussion, not as a verified
+implementation of the definition above. We return to the
+practical consequences of this choice, in particular its
+likely contribution to the exact trend test's
+conservatism relative to the unordered Fisher test under
+the null, in Section \@ref(discussion).
+
+## Connection to the Fisher exact test framework (proposed)
+
+This subsection and Section \@ref(pruning-adaptations)
+describe a proposed adaptation of the companion Fisher
+exact test enumeration machinery to the trend statistic.
+Neither the tree-based traversal nor the pruning bounds
+below have been implemented, run, or benchmarked in this
+repository; the simulation study in Section
+\@ref(simulation-design) uses the existing `CATTexact`
+implementation instead (see Section
+\@ref(future-research), item 1). The bounds are recorded
+here as a mathematically well-defined starting point for
+future implementation work, not as a completed or
+evaluated contribution of this report.
 
 In the standard Fisher exact test for $r \times 2$
 tables, the p-value is
@@ -281,6 +364,13 @@ to the trend test by replacing the probability-based
 acceptance criterion with a statistic-based one.
 
 ## Pruning adaptations
+
+These bounds are derived analytically as a proposed
+extension (see the note at the start of Section
+\@ref(connection-to-the-fisher-exact-test-framework-proposed));
+they have not been coded or tested against a reference
+implementation, and no runtime or correctness claim is
+made for them here.
 
 The key algorithmic question is whether the pruning
 strategies developed for the probability ordering
@@ -357,7 +447,38 @@ null scenario at $p \approx 0.05$, the Monte Carlo SE for rejection
 rate is $\sqrt{0.05 \times 0.95 / 2000} \approx 0.005$. For the
 alternative at $p \approx 0.8$, the Monte Carlo SE is
 $\sqrt{0.8 \times 0.2 / 2000} \approx 0.009$. Both are well below
-$1$ pp.
+$1$ pp. $B$ was chosen as a round number and verified post hoc
+against these targets rather than derived a priori from a
+worst-case ($p = 0.5$) target MCSE, which would have required
+$B \geq 2{,}500$ (see Limitations, Section \@ref(limitations)).
+
+### Morris et al. (2019) ADEMP compliance
+
+We audited this simulation study against the reporting
+standards of Morris, White, and Crowther
+[-@morris2019using]. An initial audit
+(`docs/morris-audit-2026-04-17.md`, dated 2026-04-17)
+found the study non-compliant, citing (a) `set.seed()`
+called inside `sim_trend_test()` and reseeded on every
+call, (b) two distinct per-scenario seeds preventing a
+paired cross-scenario comparison, and (c)
+`summarize_sim()` reporting no Monte Carlo SE. Those
+issues have since been remediated in the current code:
+`sim_trend_test()` no longer calls `set.seed()` (see the
+comment at `sim_trend_test.R:6-7`); a single
+`RNGkind("L'Ecuyer-CMRG")` and `set.seed(20260417)` are
+set once above, before both scenarios run in sequence
+from the same stream; `.Random.seed` is captured per
+replication (`sim_trend_test.R:17`); and
+`summarize_sim()` reports `mcse_reject` and
+`mcse_mean_p` for every method (`sim_trend_test.R:88,
+90`), shown in Tables 1-2. As of this revision, the
+study is compliant with the seed-discipline and
+MCSE-reporting criteria audited above. The one residual
+gap is that $B = 2{,}000$ was verified post hoc rather
+than derived a priori from a target MCSE, as noted in
+the Simulation size paragraph above and discussed
+further in Limitations (Section \@ref(limitations)).
 
 ```{r sim-null, cache=TRUE}
 sim_null <- sim_trend_test(
@@ -389,6 +510,14 @@ sim_alt$p_exact_trend <- pmin(
 
 ```{r table-null}
 tab_null <- summarize_sim(sim_null)
+
+fmt_rate <- function(tab, meth) {
+  sprintf("%.3f", tab$reject_rate[tab$method == meth])
+}
+r_null_asymp <- fmt_rate(tab_null, "CA Asymptotic")
+r_null_fisher <- fmt_rate(tab_null, "Fisher Exact (unordered)")
+r_null_exact <- fmt_rate(tab_null, "CA Exact (conditional)")
+
 kable(
   tab_null,
   format = "latex",
@@ -413,17 +542,31 @@ kable(
 ```
 
 Table 1 presents the rejection rates under the null
-hypothesis. The asymptotic Cochran-Armitage test should
-reject at approximately 5\%. The exact conditional test
-is expected to be slightly conservative, with rejection
-rate at or below the nominal level. Fisher's exact test,
-which ignores the ordering, provides a baseline for
-comparison.
+hypothesis. The asymptotic Cochran-Armitage test rejected
+at `r r_null_asymp`, close to the nominal 0.05. The
+unordered Fisher exact test rejected at `r r_null_fisher`,
+and the exact conditional trend test rejected at
+`r r_null_exact` -- markedly below both the nominal
+level and the unordered Fisher test's realized size.
+This ordering is
+the opposite of what conditioning on a strict refinement
+of the reference set would suggest if size alone were at
+issue, and we attribute it at least in part to the
+doubling-based construction of the exact trend test's
+two-sided p-value described in Section
+\@ref(the-exact-conditional-trend-test); see the
+discussion of this anomaly in Section
+\@ref(discussion).
 
 ## Power comparison (Scenario 2)
 
 ```{r table-alt}
 tab_alt <- summarize_sim(sim_alt)
+r_alt_asymp <- fmt_rate(tab_alt, "CA Asymptotic")
+r_alt_fisher <- fmt_rate(tab_alt, "Fisher Exact (unordered)")
+r_alt_exact <- fmt_rate(tab_alt, "CA Exact (conditional)")
+
+n_dropped_alt <- 2000L - min(tab_alt$n_valid)
 kable(
   tab_alt,
   format = "latex",
@@ -438,7 +581,14 @@ kable(
     "Power under the alternative hypothesis.",
     "Four groups, $n_i = 10$,",
     "$p = (0.05, 0.10, 0.20, 0.35)$,",
-    "$\\alpha = 0.05$, $B = 2{,}000$."
+    "$\\alpha = 0.05$, $B = 2{,}000$.",
+    "N valid is below $B$ for the asymptotic and exact",
+    "trend methods because",
+    n_dropped_alt,
+    "replications produced a degenerate column margin",
+    "($c_1 = 0$ or $c_1 = N$), for which the",
+    "Cochran-Armitage variance is zero and both methods",
+    "return \\texttt{NA}; see the text for detail."
   ),
   escape = FALSE
 ) |>
@@ -449,11 +599,49 @@ kable(
 ```
 
 Table 2 shows the power of each method to detect the
-dose-response trend. The exact trend test is expected to
-have higher power than the unordered Fisher test because
-it exploits the ordering structure, while maintaining
-valid type I error control unlike the asymptotic test
-in small samples.
+dose-response trend. The asymptotic Cochran-Armitage
+test rejected at `r r_alt_asymp`, the unordered Fisher
+exact test at `r r_alt_fisher`, and the exact conditional
+trend test at `r r_alt_exact`. Under the alternative,
+`r n_dropped_alt` of the 2,000 replications for the
+asymptotic and exact trend methods were excluded from
+the denominator because a degenerate column margin
+($c_1 = 0$ or $c_1 = N$, i.e. all groups had the same
+outcome) made the Cochran-Armitage variance zero
+(`sim_trend_test.R`, `var_num <= 0` branch); the Fisher
+exact test does not require this variance and so retains
+all 2,000 replications. The same two replications are
+dropped for both affected methods, consistent with a
+shared cause (the same degenerate simulated table)
+rather than two independent failure modes. Excluding two
+replications out of 2,000 changes the denominator by
+0.1% and is not expected to materially bias the reported
+rates, but it is disclosed here rather than left silent.
+
+At face value the exact conditional trend test
+out-performs the unordered Fisher test
+(`r r_alt_exact` vs. `r r_alt_fisher`), consistent with
+the expectation that exploiting the ordering increases
+power. This comparison is, however, confounded by the
+unequal realized type I error documented in Section
+\@ref(type-i-error-control-scenario-1): at nominal
+$\alpha = 0.05$, the three methods' realized null
+rejection rates differ by roughly three-fold
+(`r r_null_asymp`, `r r_null_fisher`, `r r_null_exact`
+for the asymptotic, Fisher, and exact trend tests,
+respectively), so part of the power ranking reflects
+differences in conservatism rather than differences in
+statistical efficiency at a common actual size. We do
+not report size-adjusted (empirical-alpha-matched) power
+curves in this study; doing so correctly would require
+re-deriving each method's rejection threshold from its
+own null distribution, which is beyond the scope of the
+present simulation. The power figures above should
+therefore be read as raw operating characteristics at
+the nominal (not the realized) $\alpha$, and the
+power ranking should not be interpreted as a
+size-adjusted efficiency ranking. See Section
+\@ref(discussion) for further interpretation.
 
 ## Distribution of p-values
 
@@ -538,45 +726,77 @@ abline(0, 1, lty = 2, lwd = 1.5)
 
 # Discussion
 
-We find that the simulation results establish the operating
+The simulation results characterize the observed operating
 characteristics of the exact conditional Cochran-Armitage
-trend test relative to both the asymptotic version and
-the unordered Fisher exact test. Several findings merit
-discussion.
+trend test relative to the asymptotic version and the
+unordered Fisher exact test, in one small, sparse
+data-generating regime. Several findings merit discussion.
 
-First, the exact trend test maintains type I error at
-or below the nominal level, consistent with the
-theoretical guarantees of the conditional approach
-[@williams1988tests; @agresti1992survey]. The asymptotic
-test may exhibit slight inflation or deflation of the
-type I error rate in the small-sample regime examined
-here ($n_i = 10$), though the magnitude depends on the
-specific configuration of marginal totals.
+First, all three tests controlled or under-controlled
+type I error at the nominal level in this scenario
+(`r r_null_asymp`, `r r_null_fisher`, and
+`r r_null_exact` for the asymptotic, Fisher, and exact
+trend tests respectively; Section
+\@ref(type-i-error-control-scenario-1)), but the exact
+trend test's realized size was substantially below both
+the nominal level and the unordered Fisher exact test's
+realized size -- an anomaly, since conditioning on the
+trend statistic's reference set (a refinement of the
+Fisher reference set) would, on size grounds alone, be
+expected to bring the realized size closer to nominal,
+not further from it. We attribute this at least in part
+to the two-sided p-value construction used for the exact
+trend test: as described in Section
+\@ref(the-exact-conditional-trend-test), the reported
+two-sided exact trend p-value is obtained by doubling
+`CATTexact`'s one-sided exact p-value, a standard but
+conservative heuristic for a discrete, possibly
+asymmetric null distribution. Doubling can push many
+one-sided p-values just above $\alpha / 2$ to just above
+$\alpha$ after doubling, discarding rejections that a
+mass-based two-sided definition (summing hypergeometric
+probability over $|T(t)| \geq |T_{\text{obs}}|$; Section
+\@ref(the-exact-conditional-trend-test)) might retain.
+We did not implement the mass-based definition to confirm
+this mechanism quantitatively in the present study (doing
+so requires the enumeration machinery discussed in
+Section
+\@ref(connection-to-the-fisher-exact-test-framework-proposed),
+which remains a proposed extension); the doubling
+construction is consistent with, but not proven to fully
+account for, the magnitude of the anomaly, and this
+should be treated as a plausible explanation rather than
+a demonstrated one.
 
-Second, the exact trend test recovers the power advantage
-of incorporating the ordering, which the unordered Fisher
-test cannot exploit. This power gain is the fundamental
-motivation for trend tests dating to @cochran1954methods
-and @armitage1955tests: when the groups have a natural
-ordering and the alternative of interest is monotone,
-a test that ignores this structure is inefficient.
+Second, the exact trend test's raw rejection rate under
+the alternative (`r r_alt_exact`) exceeded the unordered
+Fisher test's (`r r_alt_fisher`), consistent with the
+expectation that exploiting the ordering increases power
+against a monotone alternative. As discussed in Section
+\@ref(power-comparison-scenario-2), this comparison is
+confounded by the unequal realized sizes documented above
+and should not be read as a size-adjusted efficiency
+comparison. This power gain is nonetheless directionally
+consistent with the motivation for trend tests dating to
+@cochran1954methods and @armitage1955tests.
 
-Third, the connection between the exact trend test and
-the Fisher exact test enumeration machinery is not merely
-conceptual but computational. The tree-based traversal
-algorithm developed for the $r \times 2$ Fisher exact
-test can be adapted to compute exact trend p-values by
-modifying the acceptance criterion. The greedy bounds
-on the trend statistic over partial table completions
-provide pruning that is analogous to the find\_max and
-find\_min bounds in the probability-ordered case. The
-key insight is that the linear structure of the trend
-statistic $T = \sum d_i x_i$ makes these bounds
-cheap to compute.
+Third, this study does not implement or benchmark the
+tree-based pruning adaptation sketched in Section
+\@ref(pruning-adaptations). The bounds $T_{\min}$,
+$T_{\max}$ described there are a mathematically
+well-defined starting point, and the enumeration
+machinery from the companion Fisher exact test project
+could plausibly be adapted to compute exact trend
+p-values directly (avoiding the doubling-rule conservatism
+discussed above), but this remains future work (Section
+\@ref(future-research), item 1); no runtime, correctness,
+or agreement comparison against the network algorithm or
+`CATTexact` has been performed.
 
-The conditional approach has known limitations. By
-conditioning on both sets of margins, it can be
-conservative relative to unconditional exact tests
+The conditional approach has known limitations beyond the
+doubling-rule issue discussed above. By conditioning on
+both sets of margins, it can be conservative relative to
+unconditional exact tests
 [@shan2012efficient; @consiglio2014comparison]. The
 conservatism arises because the conditional reference
 set is a subset of the unconditional reference set,
@@ -586,17 +806,82 @@ depends on the regulatory context and the desired
 balance between type I error control and power
 [@agresti2001exact].
 
+## Limitations
+
+This study has several limitations. (1) The comparison
+covers a single pair of scenarios ($k = 4$ groups of size
+10, one null and one alternative configuration); the
+relative ranking of the three tests may not generalize to
+other group counts, unequal group sizes, unequal score
+spacing, or other effect sizes, and a referee reviewing
+this work for a broader claim would reasonably ask for
+additional data-generating mechanisms (Section
+\@ref(future-research)). (2) The two-sided exact trend
+p-value is constructed by doubling a one-sided exact
+p-value rather than by direct enumeration of the
+mass-based two-sided definition in Section
+\@ref(the-exact-conditional-trend-test); this operational
+choice is disclosed above but not resolved. (3) The
+unconditional exact trend test of @shan2012efficient and
+the Bartholomew-statistic comparison of
+@consiglio2014comparison, both cited as competitors with
+claimed higher power than the conditional exact test, are
+not included in the empirical comparison. (4) The tree-
+based pruning algorithm that motivated this study's
+original framing is not implemented or evaluated here
+(Section \@ref(pruning-adaptations)). (5) $B = 2{,}000$
+replications per scenario was not derived a priori from a
+target Monte Carlo SE under the Morris et al. (2019)
+framework; it was chosen as a round number and verified
+post hoc to give MCSE well below 1 percentage point for
+the realized rejection proportions in this study (Section
+\@ref(simulation-design)), but a worst-case ($p = 0.5$)
+target MCSE derivation, as recommended by
+[-@morris2019using], would have required $B \geq 2{,}500$
+and was not performed.
+
+## Data and code availability
+
+The simulation driver (`sim_trend_test.R`), summary
+function (`summarize_sim()`), and this manuscript source
+are contained in this repository
+(`32-test-for-trend/testtrend`). The simulation depends
+on the `CATTexact` package (version pinned in
+`renv.lock`) for the exact conditional p-value; no other
+non-CRAN dependencies are required. The companion
+$r \times 2$ Fisher exact test enumeration project
+referenced in Sections \@ref(the-present-study) and
+\@ref(pruning-adaptations) is a separate repository
+(`01-fisher-exact-rx2`) not included here; the pruning
+adaptation described in this manuscript has not been
+implemented in that project either, and no code for it
+currently exists anywhere. This manuscript does not use
+any external or restricted data; all results are
+generated by Monte Carlo simulation from the data-
+generating mechanisms in Section
+\@ref(simulation-design), with the RNG seed fixed once
+(`set.seed(20260417)` after `RNGkind("L'Ecuyer-CMRG")`)
+before both scenarios run in sequence.
+
 # Future research
 
 Several extensions of the current work are warranted.
 
 1. **Implementation in C/C++.** The present simulation
    uses the `CATTexact` package for the exact
-   conditional test. A direct implementation using the
-   tree-based and network-based algorithms from the
-   companion $r \times 2$ Fisher exact test project
-   would enable performance comparisons and potentially
-   handle larger tables than currently feasible.
+   conditional test, including its one-sided p-value
+   doubled for the two-sided comparison (Section
+   \@ref(the-exact-conditional-trend-test)). A direct
+   implementation using the tree-based and network-based
+   algorithms from the companion $r \times 2$ Fisher
+   exact test project, adapted per Sections
+   \@ref(connection-to-the-fisher-exact-test-framework-proposed)
+   and \@ref(pruning-adaptations), would enable both
+   performance comparisons and a direct, mass-based
+   two-sided p-value that avoids the doubling-rule
+   conservatism discussed in Section
+   \@ref(discussion), and would let it handle larger
+   tables than currently feasible.
 
 2. **Unconditional exact trend tests.** Following
    @shan2012efficient, the unconditional exact approach
@@ -631,20 +916,3 @@ Several extensions of the current work are warranted.
    ordered categorical data.
 
 # References
-
-## Morris et al. (2019) ADEMP Compliance
-
-We audited this simulation study against the reporting standards
-proposed by Morris, White, and Crowther [-@morris2019using]. The full
-audit is at `docs/morris-audit-2026-04-17.md`.
-
-**Verdict:** Not compliant.
-
-**Key gaps identified:**
-
-- `set.seed()` is called inside `sim_trend_test()` at `sim_trend_test.R:7`, reseeded on every invocation.
-- Two separate scenario seeds (42 for null, 99 for alternative) prevent cross-scenario paired comparison.
-- `summarize_sim()` returns rejection rate with no Monte Carlo SE.
-
-A remediation plan is recorded in the audit file and will be
-taken up in a subsequent revision.
