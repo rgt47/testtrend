@@ -5,6 +5,15 @@ library(tinytest)
 # root (the directory containing DESCRIPTION) by walking upward from
 # the current working directory, then source the analysis script
 # directly, the same script report.Rmd sources for the manuscript.
+#
+# analysis/ is intentionally .Rbuildignore'd (it is report-driver
+# code, not package API), so under R CMD check -- which runs tests
+# against the installed package tree -- find_pkg_root() still
+# locates a DESCRIPTION (installed packages always have one) but
+# analysis/scripts/sim_trend_test.R is absent there. Skip the file
+# in that case rather than error; the CI "Run tests" step separately
+# runs tinytest::run_test_dir() against the full source checkout,
+# where analysis/ exists and these assertions do execute.
 find_pkg_root <- function(start = getwd()) {
   d <- normalizePath(start, mustWork = TRUE)
   repeat {
@@ -17,9 +26,17 @@ find_pkg_root <- function(start = getwd()) {
   }
 }
 pkg_root <- find_pkg_root()
-source(file.path(
+sim_script <- file.path(
   pkg_root, "analysis", "scripts", "sim_trend_test.R"
-))
+)
+if (!file.exists(sim_script)) {
+  exit_file(paste(
+    "sim_trend_test.R not reachable at", sim_script,
+    "-- analysis/ is not shipped in the built package (R CMD check",
+    "sandbox); skipping"
+  ))
+}
+source(sim_script)
 
 ## -- Manual, independently-coded reference implementation of the --
 ## -- Cochran-Armitage trend statistic and its exact (hypergeometric,
