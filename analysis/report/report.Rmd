@@ -47,28 +47,28 @@ library(kableExtra)
 
 Trend tests for ordered $r \times 2$ tables are usually
 applied either as a large-sample Cochran-Armitage
-statistic or as one of several existing exact conditional
-implementations; in small, sparse samples the choice
+statistic, or as one of several existing exact conditional
+implementations. In small, sparse samples, the choice
 between them is often left unexamined. We report a small
 ADEMP-structured Monte Carlo comparison of three trend
-procedures -- the asymptotic Cochran-Armitage test, the
+procedures: the asymptotic Cochran-Armitage test, the
 unordered Fisher exact test, and the exact conditional
 Cochran-Armitage test implemented in the `CATTexact`
-package -- under a null and a dose-response alternative
-with $k = 4$ groups of size 10 ($B = 2{,}000$
-replications per scenario). We find that the realized
-type I error rates of the three tests differ
-substantially at nominal $\alpha = 0.05$, and we identify
-the doubled one-sided `CATTexact` p-value used for the
-two-sided exact test as a conservative operational choice
-that plausibly explains part of this spread; we discuss
-its effect on the power comparison and report the
-observed rejection rates directly rather than only their
-expected direction. We do not implement or benchmark the
-tree-based pruning algorithm sketched in Section
-\@ref(pruning-adaptations) as a proposed extension; the
-contribution of this report is the simulation comparison
-itself, not new enumeration software.
+package. We compare these under a null and a dose-response
+alternative with $k = 4$ groups of size 10 ($B = 2{,}000$
+replications per scenario). We find that the realized type
+I error rates of the three tests differ substantially at
+nominal $\alpha = 0.05$. We identify the doubled one-sided
+`CATTexact` p-value used for the two-sided exact test as a
+conservative operational choice that plausibly explains
+part of this spread. We discuss its effect on the power
+comparison, and we report the observed rejection rates
+directly rather than only their expected direction. We do
+not implement or benchmark the tree-based pruning algorithm
+sketched in Section \@ref(pruning-adaptations) as a
+proposed extension. The contribution of this report is the
+simulation comparison itself, not new enumeration
+software.
 
 # Introduction
 
