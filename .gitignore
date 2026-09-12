@@ -30,3 +30,12 @@ renv/staging/
 *.synctex.gz
 *.toc
 *.vrb
+
+# R session and render caches
+.DS_Store
+.Rhistory
+.RData
+.quarto/
+*_cache/
+*.Rcheck/
+__pycache__/
