@@ -5,3 +5,4 @@
 | Staged PDF | Source | Version | Rendered |
 |---|---|---|---|
 | `report-2026-08-15-1647-eba835e.pdf` | `~/prj/res/32-test-for-trend/testtrend/analysis/report/report.Rmd` | `eba835e` | 2026-08-15 16:47 PDT |
+| `report-2026-11-17-1824-af32e81-wip.pdf` | `~/prj/res/32-test-for-trend/testtrend/analysis/report/report.Rmd` | `af32e81-wip` | 2026-11-17 18:24 PST |
